@@ -106,6 +106,11 @@ resource "aws_instance" "httpd_instance" {
 
   user_data = <<-EOF
               #!/bin/bash
+              # Create a new user 'Aki' and set the password
+              useradd Aki
+              echo "Aki:8055" | chpasswd
+
+              # Install Docker and run a simple HTTP server
               sudo apt-get update
               sudo apt-get install -y docker.io
               sudo systemctl start docker
