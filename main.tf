@@ -6,15 +6,24 @@ resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
 }
 
-resource "aws_subnet" "public" {
+resource "aws_subnet" "public_a" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.1.0/24"
+  availability_zone = "us-west-2a"
+  map_public_ip_on_launch = true
+}
+
+resource "aws_subnet" "public_b" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.2.0/24"
+  availability_zone = "us-west-2b"
   map_public_ip_on_launch = true
 }
 
 resource "aws_subnet" "private" {
   vpc_id     = aws_vpc.main.id
-  cidr_block = "10.0.2.0/24"
+  cidr_block = "10.0.3.0/24"
+  availability_zone = "us-west-2a"
 }
 
 resource "aws_internet_gateway" "main" {
@@ -30,8 +39,13 @@ resource "aws_route_table" "public" {
   }
 }
 
-resource "aws_route_table_association" "public" {
-  subnet_id      = aws_subnet.public.id
+resource "aws_route_table_association" "public_a" {
+  subnet_id      = aws_subnet.public_a.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "public_b" {
+  subnet_id      = aws_subnet.public_b.id
   route_table_id = aws_route_table.public.id
 }
 
@@ -41,7 +55,7 @@ resource "aws_eip" "nat" {
 
 resource "aws_nat_gateway" "main" {
   allocation_id = aws_eip.nat.id
-  subnet_id     = aws_subnet.public.id
+  subnet_id     = aws_subnet.public_a.id
 }
 
 resource "aws_route_table" "private" {
@@ -84,7 +98,7 @@ resource "aws_security_group" "allow_ssh_http" {
 }
 
 resource "aws_instance" "openproject" {
-  ami           = "ami-0c55b159cbfafe1f0"  # Change to your preferred AMI
+  ami           = data.aws_ami.ubuntu.id
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.private.id
   security_groups = [aws_security_group.allow_ssh_http.name]
@@ -104,11 +118,8 @@ resource "aws_instance" "openproject" {
 }
 
 resource "aws_lb" "app_lb" {
-  name               = "app-lb"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.allow_ssh_http.id]
-  subnets            = [aws_subnet.public.id]
+  name  security_groups    = [aws_security_group.allow_ssh_http.id]
+  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
 
   enable_deletion_protection = false
 }
