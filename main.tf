@@ -99,7 +99,7 @@ resource "aws_security_group" "allow_ssh_http" {
 }
 
 resource "aws_instance" "httpd_instance" {
-  ami           = "ami-04b4f1a9cf54c11d0"  # Direct AMI ID (Ubuntu/Debian-like AMI for Docker)
+  ami           = "ami-04b4f1a9cf54c11d0"  # Direct AMI ID
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.privateaki.id
   vpc_security_group_ids = [aws_security_group.allow_ssh_http.id]
@@ -110,16 +110,17 @@ resource "aws_instance" "httpd_instance" {
               sudo apt-get install -y docker.io
               sudo systemctl start docker
               sudo systemctl enable docker
-              sudo docker run -d -p 80:80 httpd:latest  # Running the simple HTTP server in a container
+              sudo docker run -d -p 80:80 httpd:latest
               EOF
 
   tags = {
-    Name = "HttpdDockerInstanceaki"
+    Name = "HttpdInstanceaki"
   }
 }
 
-resource "aws_lb" "app_lb1" {
-  name               = "app-lb"
+# Changed ALB name to avoid conflict
+resource "aws_lb" "new_app_lb" {
+  name               = "new-app-lb"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.allow_ssh_http.id]
@@ -128,8 +129,9 @@ resource "aws_lb" "app_lb1" {
   enable_deletion_protection = false
 }
 
-resource "aws_lb_target_group" "app_tg1" {
-  name     = "app-tg"
+# Changed TG name to avoid conflict
+resource "aws_lb_target_group" "new_app_tg" {
+  name     = "new-app-tg"
   port     = 80
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
@@ -144,20 +146,21 @@ resource "aws_lb_target_group" "app_tg1" {
   }
 }
 
-resource "aws_lb_listener" "app_lb1_listener" {
-  load_balancer_arn = aws_lb.app_lb1.arn
+# Listener for new ALB
+resource "aws_lb_listener" "new_app_lb_listener" {
+  load_balancer_arn = aws_lb.new_app_lb.arn
   port              = "80"
   protocol          = "HTTP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.app_tg1.arn
+    target_group_arn = aws_lb_target_group.new_app_tg.arn
   }
 }
 
-# Attach EC2 instance to the target group
-resource "aws_lb_target_group_attachment" "app_tg_attachment" {
-  target_group_arn = aws_lb_target_group.app_tg1.arn
+# Changed the Target Group Attachment name to avoid conflict
+resource "aws_lb_target_group_attachment" "new_app_tg_attachment" {
+  target_group_arn = aws_lb_target_group.new_app_tg.arn
   target_id        = aws_instance.httpd_instance.id
   port             = 80
 }
