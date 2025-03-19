@@ -97,7 +97,17 @@ resource "aws_security_group" "allow_ssh_http" {
   }
 }
 
-resource "aws_instance" "openproject" {
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"]  # Canonical
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
+  }
+}
+
+aws_instance" "openproject" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.private.id
@@ -118,7 +128,10 @@ resource "aws_instance" "openproject" {
 }
 
 resource "aws_lb" "app_lb" {
-  name  security_groups    = [aws_security_group.allow_ssh_http.id]
+  name               = "app-lb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.allow_ssh_http.id]
   subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
 
   enable_deletion_protection = false
