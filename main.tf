@@ -6,21 +6,21 @@ resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
 }
 
-resource "aws_subnet" "public_a" {
+resource "aws_subnet" "public_aki" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.1.0/24"
   availability_zone       = "us-east-1a"
   map_public_ip_on_launch = true
 }
 
-resource "aws_subnet" "public_b" {
+resource "aws_subnet" "public_baki" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.2.0/24"
   availability_zone       = "us-east-1b"
   map_public_ip_on_launch = true
 }
 
-resource "aws_subnet" "private" {
+resource "aws_subnet" "privateaki" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.3.0/24"
   availability_zone       = "us-east-1a"
@@ -39,13 +39,13 @@ resource "aws_route_table" "public" {
   }
 }
 
-resource "aws_route_table_association" "public_a" {
-  subnet_id      = aws_subnet.public_a.id
+resource "aws_route_table_association" "public_aki" {
+  subnet_id      = aws_subnet.public_aki.id
   route_table_id = aws_route_table.public.id
 }
 
-resource "aws_route_table_association" "public_b" {
-  subnet_id      = aws_subnet.public_b.id
+resource "aws_route_table_association" "public_baki" {
+  subnet_id      = aws_subnet.public_baki.id
   route_table_id = aws_route_table.public.id
 }
 
@@ -55,11 +55,11 @@ resource "aws_eip" "nat" {
 
 resource "aws_nat_gateway" "main" {
   allocation_id = aws_eip.nat.id
-  subnet_id     = aws_subnet.public_a.id
+  subnet_id     = aws_subnet.public_aki.id
   depends_on    = [aws_eip.nat]
 }
 
-resource "aws_route_table" "private" {
+resource "aws_route_table" "privateaki" {
   vpc_id = aws_vpc.main.id
 
   route {
@@ -68,9 +68,9 @@ resource "aws_route_table" "private" {
   }
 }
 
-resource "aws_route_table_association" "private" {
-  subnet_id      = aws_subnet.private.id
-  route_table_id = aws_route_table.private.id
+resource "aws_route_table_association" "privateaki" {
+  subnet_id      = aws_subnet.privateaki.id
+  route_table_id = aws_route_table.privateaki.id
 }
 
 resource "aws_security_group" "allow_ssh_http" {
@@ -98,11 +98,11 @@ resource "aws_security_group" "allow_ssh_http" {
   }
 }
 
-resource "aws_instance" "openproject" {
+resource "aws_instance" "openprojectaki" {
   ami           = "ami-04b4f1a9cf54c11d0"  # Direct AMI ID
   instance_type = "t2.micro"
-  subnet_id     = aws_subnet.private.id
-  security_groups = [aws_security_group.allow_ssh_http.name]
+  subnet_id     = aws_subnet.privateaki.id
+  security_group_ids = [aws_security_group.allow_ssh_http.id]
 
   user_data = <<-EOF
               #!/bin/bash
@@ -114,7 +114,7 @@ resource "aws_instance" "openproject" {
               EOF
 
   tags = {
-    Name = "OpenProjectInstance"
+    Name = "OpenProjectInstanceaki"
   }
 }
 
@@ -123,7 +123,7 @@ resource "aws_lb" "app_lb" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.allow_ssh_http.id]
-  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+  subnets            = [aws_subnet.public_aki.id, aws_subnet.public_baki.id]
 
   enable_deletion_protection = false
 }
@@ -157,6 +157,6 @@ resource "aws_lb_listener" "app_lb_listener" {
 
 resource "aws_lb_target_group_attachment" "app_tg_attachment" {
   target_group_arn = aws_lb_target_group.app_tg.arn
-  target_id        = aws_instance.openproject.id
+  target_id        = aws_instance.openprojectaki.id
   port             = 80
 }
