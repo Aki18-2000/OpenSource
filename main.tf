@@ -99,7 +99,7 @@ resource "aws_security_group" "allow_ssh_http" {
 }
 
 resource "aws_instance" "httpd_instance" {
-  ami           = "ami-04b4f1a9cf54c11d0"  # Direct AMI ID
+  ami           = "ami-04b4f1a9cf54c11d0"  # Direct AMI ID (Ubuntu/Debian-like AMI for Docker)
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.privateaki.id
   vpc_security_group_ids = [aws_security_group.allow_ssh_http.id]
@@ -107,14 +107,14 @@ resource "aws_instance" "httpd_instance" {
   user_data = <<-EOF
               #!/bin/bash
               sudo apt-get update
-              sudo apt-get install -y apache2
-              sudo systemctl start apache2
-              sudo systemctl enable apache2
-              sudo echo "Hello, World! This is a simple HTTP server!" > /var/www/html/index.html
+              sudo apt-get install -y docker.io
+              sudo systemctl start docker
+              sudo systemctl enable docker
+              sudo docker run -d -p 80:80 httpd:latest  # Running the simple HTTP server in a container
               EOF
 
   tags = {
-    Name = "HttpdInstanceaki"
+    Name = "HttpdDockerInstanceaki"
   }
 }
 
@@ -155,3 +155,9 @@ resource "aws_lb_listener" "app_lb1_listener" {
   }
 }
 
+# Attach EC2 instance to the target group
+resource "aws_lb_target_group_attachment" "app_tg_attachment" {
+  target_group_arn = aws_lb_target_group.app_tg1.arn
+  target_id        = aws_instance.httpd_instance.id
+  port             = 80
+}
