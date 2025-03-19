@@ -102,7 +102,7 @@ resource "aws_instance" "openprojectaki" {
   ami           = "ami-04b4f1a9cf54c11d0"  # Direct AMI ID
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.privateaki.id
-  security_group_ids = [aws_security_group.allow_ssh_http.id]
+  vpc_security_group_ids = [aws_security_group.allow_ssh_http.id]
 
   user_data = <<-EOF
               #!/bin/bash
