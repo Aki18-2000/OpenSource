@@ -98,7 +98,7 @@ resource "aws_security_group" "allow_ssh_http" {
   }
 }
 
-resource "aws_instance" "openprojectaki" {
+resource "aws_instance" "httpd_instance" {
   ami           = "ami-04b4f1a9cf54c11d0"  # Direct AMI ID
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.privateaki.id
@@ -107,18 +107,18 @@ resource "aws_instance" "openprojectaki" {
   user_data = <<-EOF
               #!/bin/bash
               sudo apt-get update
-              sudo apt-get install -y docker.io
-              sudo systemctl start docker
-              sudo systemctl enable docker
-              sudo docker run -d -p 80:80 openproject/community:latest
+              sudo apt-get install -y apache2
+              sudo systemctl start apache2
+              sudo systemctl enable apache2
+              sudo echo "Hello, World! This is a simple HTTP server!" > /var/www/html/index.html
               EOF
 
   tags = {
-    Name = "OpenProjectInstanceaki"
+    Name = "HttpdInstanceaki"
   }
 }
 
-resource "aws_lb" "app_lb" {
+resource "aws_lb" "app_lb1" {
   name               = "app-lb"
   internal           = false
   load_balancer_type = "application"
@@ -128,7 +128,7 @@ resource "aws_lb" "app_lb" {
   enable_deletion_protection = false
 }
 
-resource "aws_lb_target_group" "app_tg" {
+resource "aws_lb_target_group" "app_tg1" {
   name     = "app-tg"
   port     = 80
   protocol = "HTTP"
@@ -144,19 +144,14 @@ resource "aws_lb_target_group" "app_tg" {
   }
 }
 
-resource "aws_lb_listener" "app_lb_listener" {
-  load_balancer_arn = aws_lb.app_lb.arn
+resource "aws_lb_listener" "app_lb1_listener" {
+  load_balancer_arn = aws_lb.app_lb1.arn
   port              = "80"
   protocol          = "HTTP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.app_tg.arn
+    target_group_arn = aws_lb_target_group.app_tg1.arn
   }
 }
 
-resource "aws_lb_target_group_attachment" "app_tg_attachment" {
-  target_group_arn = aws_lb_target_group.app_tg.arn
-  target_id        = aws_instance.openprojectaki.id
-  port             = 80
-}
